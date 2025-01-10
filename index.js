@@ -66,7 +66,7 @@ app.post('/api/shorturl', async function(req, res) {
   const url = req.body.url;
   if(!validator.isURL(url)) res.json({error: 'invalid url'});
   //console.log(url);
-  const shorturl = await getShortUrl(url);
+  let shorturl = await getShortUrl(url);
   if(!shorturl) shorturl = await addShortUrl(url);
   //console.log(shorturl, url);
   res.json({ original_url: url, short_url: shorturl.shortUrlId });
