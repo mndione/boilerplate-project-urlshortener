@@ -29,7 +29,10 @@ const shortUrlSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  shortUrlId: Number
+  shortUrlId: {
+    type: Number,
+    required: false
+  }
 }, { strictQuery: false });
 
 const ShortUrl = mongoose.model('ShortUrl', shortUrlSchema);
@@ -40,13 +43,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // add shorturl function
 const addShortUrl = async (url) => {
-  let shorturl = new ShortUrl({url: url});
+  let newshorturl = new ShortUrl({url: url});
   //console.log(shorturl);
-  shorturl.save(async (err, data) => {
-    if(err) return console.log(err);
-    //console.log(data);
-    return await getShortUrl(url);
-  });
+  return await newshorturl.save();
 };
 
 // get shorturl function
@@ -55,7 +54,7 @@ const getShortUrl = async (x) => {
   if(isNaN(x)) cond = {url: x};
   else cond = {shortUrlId: x*1};
   //console.log(cond);
-  return await ShortUrl.findOne(cond);
+  return await ShortUrl.findOne(cond, 'url shortUrlId');
 };
 
 
@@ -64,12 +63,21 @@ app.post('/api/shorturl', async function(req, res) {
   //console.log(req.body);
   const validator = require('validator');
   const url = req.body.url;
-  if(!validator.isURL(url)) res.json({error: 'invalid url'});
+  if(!validator.isURL(url,{protocols: ['http', 'https'], require_protocol: true})) {
+    res.json({error: 'invalid url'});
+    return;
+  }
   //console.log(url);
   let shorturl = await getShortUrl(url);
-  if(!shorturl) shorturl = await addShortUrl(url);
-  //console.log(shorturl, url);
-  res.json({ original_url: url, short_url: shorturl.shortUrlId });
+  if(!shorturl)  {
+    await addShortUrl(url);
+    shorturl = await getShortUrl(url);
+  }
+  
+  while(!shorturl.shortUrlId) shorturl = await getShortUrl(url);
+  
+  res.json({ original_url : shorturl.url, short_url : shorturl.shortUrlId });
+  
 });
 
 // get getshorturl router
